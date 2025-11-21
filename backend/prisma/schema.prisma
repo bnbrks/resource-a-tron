@@ -1,0 +1,174 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  TEAM_MEMBER
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskType {
+  PROJECT
+  TRAINING
+  PTO
+  OTHER
+}
+
+enum ProficiencyLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+model User {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  name            String
+  passwordHash    String
+  role            UserRole @default(TEAM_MEMBER)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Skills and development
+  skills          UserSkill[]
+  developmentAreas Json?   // Array of development area strings
+
+  // Relations
+  timeEntries     TimeEntry[]
+  allocations    Allocation[]
+  
+  @@index([email])
+}
+
+model UserSkill {
+  id              String           @id @default(cuid())
+  userId          String
+  skillName       String
+  proficiencyLevel ProficiencyLevel
+  certified      Boolean          @default(false)
+  createdAt       DateTime        @default(now())
+
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillName])
+  @@index([userId])
+  @@index([skillName])
+}
+
+model Project {
+  id              String          @id @default(cuid())
+  name            String
+  description     String?
+  client          String?
+  status          ProjectStatus   @default(PLANNING)
+  startDate       DateTime?
+  endDate         DateTime?
+  budgetHours     Float?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  tasks           Task[]
+  requirements    ProjectRequirement[]
+  allocations    Allocation[]    @relation("ProjectAllocations")
+
+  @@index([status])
+  @@index([startDate])
+}
+
+model ProjectRequirement {
+  id              String           @id @default(cuid())
+  projectId       String
+  skillName       String
+  requiredLevel   ProficiencyLevel
+  priority        Int              @default(0) // Higher = more important
+  createdAt       DateTime         @default(now())
+
+  project         Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([skillName])
+}
+
+model Task {
+  id              String          @id @default(cuid())
+  name            String
+  description     String?
+  type            TaskType
+  projectId       String?
+  startDate       DateTime?
+  endDate         DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  timeEntries     TimeEntry[]
+  allocations     Allocation[]
+
+  @@index([type])
+  @@index([projectId])
+  @@index([startDate])
+}
+
+model TimeEntry {
+  id              String          @id @default(cuid())
+  userId          String
+  taskId          String
+  date            DateTime
+  hours           Float
+  description     String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task            Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, taskId, date])
+  @@index([userId])
+  @@index([taskId])
+  @@index([date])
+}
+
+model Allocation {
+  id              String          @id @default(cuid())
+  userId          String
+  taskId          String
+  projectId       String?         // Denormalized for easier queries
+  allocatedHours Float           // Hours per week
+  startDate       DateTime
+  endDate         DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  task            Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project         Project?        @relation("ProjectAllocations", fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([taskId])
+  @@index([projectId])
+  @@index([startDate])
+  @@index([endDate])
+}
+
