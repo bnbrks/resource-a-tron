@@ -120,8 +120,8 @@ async function generateUsers() {
       .slice(0, numSkills);
 
     for (const skillName of selectedSkills) {
-      const proficiencyLevels = Object.values(ProficiencyLevel);
-      const level = proficiencyLevels[Math.floor(Math.random() * proficiencyLevels.length)];
+      const proficiencyLevels: ProficiencyLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'];
+      const level: ProficiencyLevel = proficiencyLevels[Math.floor(Math.random() * proficiencyLevels.length)];
       const certified = Math.random() > 0.7; // 30% certified
 
       await prisma.userSkill.create({
@@ -200,7 +200,7 @@ async function generateProjects(users: any[]) {
 async function generateTasks(projects: any[]) {
   console.log('Generating tasks...');
   const tasks = [];
-  const taskTypes = Object.values(TaskType);
+  const taskTypes: TaskType[] = ['PROJECT', 'TRAINING', 'PTO', 'OTHER'];
 
   // Project tasks
   for (const project of projects) {
