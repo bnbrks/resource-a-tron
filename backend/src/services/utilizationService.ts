@@ -66,7 +66,7 @@ export async function calculateUserUtilization(
   });
 
   // Calculate actual hours
-  const actualHours = timeEntries.reduce((sum, entry) => sum + entry.hours, 0);
+  const actualHours = timeEntries.reduce((sum: number, entry: { hours: number }) => sum + entry.hours, 0);
 
   // Calculate utilization
   const utilizationPercent = capacityHours > 0 ? (actualHours / capacityHours) * 100 : 0;
@@ -158,8 +158,8 @@ export async function getActivitySummary(
     prisma.user.count(),
   ]);
 
-  const totalHours = timeEntries.reduce((sum, entry) => sum + entry.hours, 0);
-  const uniqueUsers = new Set(timeEntries.map(e => e.userId)).size;
+  const totalHours = timeEntries.reduce((sum: number, entry: { hours: number; userId: string }) => sum + entry.hours, 0);
+  const uniqueUsers = new Set(timeEntries.map((e: { hours: number; userId: string }) => e.userId)).size;
 
   return {
     totalProjects: projects,
