@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import prisma from '../prisma';
 
 const router = Router();
@@ -49,10 +49,13 @@ router.post('/register', async (req: Request, res: Response) => {
       throw new Error('JWT_SECRET not configured');
     }
 
+    const signOptions: SignOptions = {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    };
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       secret,
-      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as string }
+      signOptions
     );
 
     res.status(201).json({
@@ -96,10 +99,13 @@ router.post('/login', async (req: Request, res: Response) => {
       throw new Error('JWT_SECRET not configured');
     }
 
+    const signOptions: SignOptions = {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    };
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       secret,
-      { expiresIn: (process.env.JWT_EXPIRES_IN || '7d') as string }
+      signOptions
     );
 
     res.json({
