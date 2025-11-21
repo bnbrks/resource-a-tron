@@ -1,4 +1,10 @@
-import { PrismaClient, UserRole, ProjectStatus, TaskType, ProficiencyLevel } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+
+// Use string literals for enums to avoid import issues during build
+type UserRole = 'ADMIN' | 'MANAGER' | 'TEAM_MEMBER';
+type ProjectStatus = 'PLANNING' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';
+type TaskType = 'PROJECT' | 'TRAINING' | 'PTO' | 'OTHER';
+type ProficiencyLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -89,9 +95,9 @@ async function generateUsers() {
     const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@moodys.com`;
     const passwordHash = await bcrypt.hash('password123', 10);
     
-    const role = i < 2 ? UserRole.ADMIN :
-                 i < 10 ? UserRole.MANAGER :
-                 UserRole.TEAM_MEMBER;
+    const role: UserRole = i < 2 ? 'ADMIN' :
+                 i < 10 ? 'MANAGER' :
+                 'TEAM_MEMBER';
 
     const user = await prisma.user.create({
       data: {
@@ -138,12 +144,12 @@ async function generateUsers() {
 async function generateProjects(users: any[]) {
   console.log('Generating projects...');
   const projects = [];
-  const statuses = Object.values(ProjectStatus);
+  const statuses: ProjectStatus[] = ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
 
   for (let i = 0; i < 18; i++) {
     const name = PROJECT_NAMES[i] || `Project ${i + 1}`;
     const client = CLIENTS[Math.floor(Math.random() * CLIENTS.length)];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
+    const status: ProjectStatus = statuses[Math.floor(Math.random() * statuses.length)];
     
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 180)); // Last 6 months
@@ -171,8 +177,8 @@ async function generateProjects(users: any[]) {
       .slice(0, numRequirements);
 
     for (let j = 0; j < selectedSkills.length; j++) {
-      const proficiencyLevels = Object.values(ProficiencyLevel);
-      const level = proficiencyLevels[Math.floor(Math.random() * proficiencyLevels.length) + 1] || ProficiencyLevel.INTERMEDIATE;
+      const proficiencyLevels: ProficiencyLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'];
+      const level: ProficiencyLevel = proficiencyLevels[Math.floor(Math.random() * proficiencyLevels.length) + 1] || 'INTERMEDIATE';
 
       await prisma.projectRequirement.create({
         data: {
@@ -204,7 +210,7 @@ async function generateTasks(projects: any[]) {
         data: {
           name: `Task ${i + 1} for ${project.name}`,
           description: `Detailed work item for ${project.name}`,
-          type: TaskType.PROJECT,
+          type: 'PROJECT' as TaskType,
           projectId: project.id,
           startDate: project.startDate,
           endDate: project.endDate,
@@ -225,7 +231,7 @@ async function generateTasks(projects: any[]) {
       data: {
         name: `Training: ${INSURANCE_SKILLS[Math.floor(Math.random() * INSURANCE_SKILLS.length)]}`,
         description: 'Professional development training session',
-        type: TaskType.TRAINING,
+        type: 'TRAINING' as TaskType,
         startDate,
         endDate,
       },
@@ -244,7 +250,7 @@ async function generateTasks(projects: any[]) {
       data: {
         name: `PTO - ${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]}`,
         description: 'Paid time off',
-        type: TaskType.PTO,
+        type: 'PTO' as TaskType,
         startDate,
         endDate,
       },
@@ -263,7 +269,7 @@ async function generateTasks(projects: any[]) {
       data: {
         name: `Other Activity ${i + 1}`,
         description: 'Miscellaneous team activity',
-        type: TaskType.OTHER,
+        type: 'OTHER' as TaskType,
         startDate,
         endDate,
       },
@@ -280,7 +286,7 @@ async function generateAllocations(users: any[], tasks: any[]) {
   let allocationCount = 0;
 
   // Allocate users to project tasks
-  const projectTasks = tasks.filter(t => t.type === TaskType.PROJECT);
+  const projectTasks = tasks.filter((t: { type: TaskType }) => t.type === 'PROJECT');
   
   for (const task of projectTasks) {
     const numAllocations = Math.floor(Math.random() * 3) + 1; // 1-3 users per task
@@ -308,7 +314,7 @@ async function generateAllocations(users: any[], tasks: any[]) {
   }
 
   // Allocate users to training
-  const trainingTasks = tasks.filter(t => t.type === TaskType.TRAINING);
+  const trainingTasks = tasks.filter((t: { type: TaskType }) => t.type === 'TRAINING');
   for (const task of trainingTasks) {
     const numAllocations = Math.floor(Math.random() * 5) + 3; // 3-7 users per training
     const selectedUsers = [...users]
@@ -340,7 +346,7 @@ async function generateTimeEntries(users: any[], tasks: any[]) {
   const startDate = new Date();
   startDate.setMonth(startDate.getMonth() - 6);
 
-  const projectTasks = tasks.filter(t => t.type === TaskType.PROJECT);
+  const projectTasks = tasks.filter((t: { type: TaskType }) => t.type === 'PROJECT');
   
   for (let day = 0; day < 180; day++) {
     const currentDate = new Date(startDate);

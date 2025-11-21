@@ -112,7 +112,7 @@ async function evaluateUserForProject(
     const userSkillLevel = userSkills.get(req.skillName);
     
     if (userSkillLevel) {
-      const levelMatch = compareSkillLevels(userSkillLevel, req.requiredLevel);
+      const levelMatch = compareSkillLevels(userSkillLevel, String(req.requiredLevel));
       if (levelMatch >= 0) {
         matchedRequirements += req.priority || 1;
         reasons.push(`Has ${req.skillName} at ${userSkillLevel} level`);

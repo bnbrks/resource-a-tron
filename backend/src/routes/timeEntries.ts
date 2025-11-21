@@ -304,7 +304,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
         where: { projectId: projectId as string },
         select: { id: true },
       });
-      where.taskId = { in: tasks.map(t => t.id) };
+      where.taskId = { in: tasks.map((t: { id: string }) => t.id) };
     }
 
     const summary = await prisma.timeEntry.groupBy({
@@ -319,7 +319,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
     });
 
     // Get task details
-    const taskIds = summary.map(s => s.taskId);
+    const taskIds = summary.map((s: { taskId: string }) => s.taskId);
     const tasks = await prisma.task.findMany({
       where: { id: { in: taskIds } },
       include: {
@@ -332,8 +332,8 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
       },
     });
 
-    const result = summary.map(s => {
-      const task = tasks.find(t => t.id === s.taskId);
+    const result = summary.map((s: { taskId: string; _sum: { hours: number | null }; _count: { id: number } }) => {
+      const task = tasks.find((t: { id: string }) => t.id === s.taskId);
       return {
         taskId: s.taskId,
         task: task ? {

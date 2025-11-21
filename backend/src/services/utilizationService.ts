@@ -54,7 +54,7 @@ export async function calculateUserUtilization(
 
   // Calculate allocated hours (sum of weekly allocations)
   let allocatedHours = 0;
-  allocations.forEach((allocation) => {
+  allocations.forEach((allocation: { startDate: Date; endDate: Date | null; allocatedHours: number }) => {
     const allocStart = new Date(Math.max(allocation.startDate.getTime(), startDate.getTime()));
     const allocEnd = allocation.endDate
       ? new Date(Math.min(allocation.endDate.getTime(), endDate.getTime()))
@@ -97,7 +97,7 @@ export async function calculateTeamUtilization(
   });
 
   const results = await Promise.all(
-    users.map(user => calculateUserUtilization(user.id, startDate, endDate, standardHoursPerWeek))
+    users.map((user: { id: string }) => calculateUserUtilization(user.id, startDate, endDate, standardHoursPerWeek))
   );
 
   return results;
