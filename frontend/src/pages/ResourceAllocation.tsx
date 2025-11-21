@@ -81,7 +81,7 @@ export default function ResourceAllocation() {
   }, { weekStartsOn: 1 })
 
   const getUserAllocations = (userId: string) => {
-    return allocations.filter(a => a.userId === userId)
+    return allocations.filter((a: Allocation) => a.userId === userId)
   }
 
   if (loading) {
@@ -140,12 +140,12 @@ export default function ResourceAllocation() {
                   {weeks.map((week) => {
                     const weekStart = startOfWeek(week, { weekStartsOn: 1 })
                     const weekEnd = endOfWeek(week, { weekStartsOn: 1 })
-                    const weekAllocations = userAllocations.filter(a => {
+                    const weekAllocations = userAllocations.filter((a: Allocation) => {
                       const allocStart = new Date(a.startDate)
                       const allocEnd = a.endDate ? new Date(a.endDate) : new Date('2099-12-31')
                       return allocStart <= weekEnd && allocEnd >= weekStart
                     })
-                    const totalHours = weekAllocations.reduce((sum, a) => sum + a.allocatedHours, 0)
+                    const totalHours = weekAllocations.reduce((sum: number, a: Allocation) => sum + a.allocatedHours, 0)
                     
                     return (
                       <td key={week.toISOString()} className="px-4 py-4 text-center">

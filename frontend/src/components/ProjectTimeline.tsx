@@ -6,7 +6,7 @@ interface ProjectTimelineProps {
 }
 
 export default function ProjectTimeline({ projects }: ProjectTimelineProps) {
-  const sortedProjects = [...projects].sort((a, b) => {
+  const sortedProjects = [...projects].sort((a: Project, b: Project) => {
     const dateA = a.startDate ? new Date(a.startDate).getTime() : 0
     const dateB = b.startDate ? new Date(b.startDate).getTime() : 0
     return dateA - dateB

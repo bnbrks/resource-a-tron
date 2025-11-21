@@ -57,9 +57,9 @@ export default function Analytics() {
   }
 
   const utilizationChartData = utilization
-    .sort((a, b) => b.utilizationPercent - a.utilizationPercent)
+    .sort((a: UtilizationData, b: UtilizationData) => b.utilizationPercent - a.utilizationPercent)
     .slice(0, 10)
-    .map(u => ({
+    .map((u: UtilizationData) => ({
       name: u.userName,
       utilization: Number(u.utilizationPercent.toFixed(1)),
       allocated: Number((u.allocatedHours / u.capacityHours * 100).toFixed(1)),
@@ -145,8 +145,8 @@ export default function Analytics() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {utilization
-                .sort((a, b) => b.utilizationPercent - a.utilizationPercent)
-                .map((u) => (
+                .sort((a: UtilizationData, b: UtilizationData) => b.utilizationPercent - a.utilizationPercent)
+                .map((u: UtilizationData) => (
                   <tr key={u.userId}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">{u.userName}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">{u.capacityHours.toFixed(1)}h</td>

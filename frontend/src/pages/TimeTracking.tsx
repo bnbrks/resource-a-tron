@@ -73,12 +73,12 @@ export default function TimeTracking() {
 
   const getEntriesForDate = (date: Date) => {
     return timeEntries.filter(
-      entry => format(new Date(entry.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+      (entry: TimeEntry) => format(new Date(entry.date), 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
     )
   }
 
   const getTotalHours = () => {
-    return timeEntries.reduce((sum, entry) => sum + entry.hours, 0)
+    return timeEntries.reduce((sum: number, entry: TimeEntry) => sum + entry.hours, 0)
   }
 
   if (loading) {
@@ -137,7 +137,7 @@ export default function TimeTracking() {
             <tr>
               {weekDays.map((day) => {
                 const dayEntries = getEntriesForDate(day)
-                const dayTotal = dayEntries.reduce((sum, e) => sum + e.hours, 0)
+                const dayTotal = dayEntries.reduce((sum: number, e: TimeEntry) => sum + e.hours, 0)
                 return (
                   <td key={day.toISOString()} className="px-4 py-4">
                     <div className="text-sm font-semibold mb-2">{dayTotal.toFixed(1)}h</div>
