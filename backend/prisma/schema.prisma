@@ -1,0 +1,351 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  TEAM_MEMBER
+}
+
+enum ActivityType {
+  PROJECT
+  INTERNAL
+  PTO
+  NON_BILLABLE
+}
+
+enum ActivityStatus {
+  PLANNED
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum AssignmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+enum ScheduleStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum TimeEntryStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  ASSIGNMENT
+  DEADLINE
+  UTILIZATION_ALERT
+  SCHEDULE_CONFLICT
+  TIMESHEET_REMINDER
+  KPI_ACHIEVEMENT
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  name          String
+  role          UserRole @default(TEAM_MEMBER)
+  department    String?
+  passwordHash  String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  profile       UserProfile?
+  teamRoles     UserTeamRole[]
+  skills        UserSkill[]
+  assignments   Assignment[]
+  timeEntries   TimeEntry[]
+  schedules     Schedule[]
+  notifications Notification[]
+  approvedTimeEntries TimeEntry[] @relation("TimeEntryApprover")
+
+  @@index([email])
+  @@index([role])
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  availability Json?   // Working hours, timezone, etc.
+  preferences Json?    // User preferences
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model TeamRole {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  description  String?
+  billingRate  Decimal  @db.Decimal(10, 2) // Hourly billing rate
+  costRate     Decimal  @db.Decimal(10, 2) // Internal cost rate
+  effectiveFrom DateTime @default(now())
+  effectiveTo  DateTime?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  userRoles    UserTeamRole[]
+  activityScopes ActivityScope[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+model UserTeamRole {
+  id            String   @id @default(cuid())
+  userId        String
+  teamRoleId    String
+  effectiveFrom DateTime @default(now())
+  effectiveTo   DateTime?
+  isCurrent     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamRole      TeamRole @relation(fields: [teamRoleId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([teamRoleId])
+  @@index([isCurrent])
+  @@unique([userId, teamRoleId, effectiveFrom])
+}
+
+model Skill {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  category    String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  userSkills  UserSkill[]
+
+  @@index([name])
+  @@index([category])
+}
+
+model UserSkill {
+  id               String   @id @default(cuid())
+  userId           String
+  skillId          String
+  proficiencyLevel Int      @default(1) // 1-5 scale
+  certified        Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill            Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+  @@index([userId])
+  @@index([skillId])
+}
+
+model Activity {
+  id               String         @id @default(cuid())
+  name             String
+  type             ActivityType
+  status           ActivityStatus @default(PLANNED)
+  description      String?
+  startDate        DateTime?
+  endDate          DateTime?
+  budgetHours      Decimal?       @db.Decimal(10, 2)
+  budgetCost       Decimal?       @db.Decimal(10, 2)
+  estimatedRevenue Decimal?       @db.Decimal(10, 2)
+  estimatedCost    Decimal?       @db.Decimal(10, 2)
+  estimatedMargin  Decimal?       @db.Decimal(10, 2)
+  priority         Int            @default(0)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  // Relations
+  scopes           ActivityScope[]
+  programs         ActivityProgram[]
+  assignments      Assignment[]
+  timeEntries      TimeEntry[]
+  schedules        Schedule[]
+
+  @@index([type])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model ActivityScope {
+  id           String   @id @default(cuid())
+  activityId   String
+  teamRoleId   String
+  allocatedHours Decimal @db.Decimal(10, 2)
+  billingRate  Decimal? @db.Decimal(10, 2)
+  costRate     Decimal? @db.Decimal(10, 2)
+  phaseName    String?
+  sequence     Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  teamRole     TeamRole @relation(fields: [teamRoleId], references: [id], onDelete: Cascade)
+
+  @@index([activityId])
+  @@index([teamRoleId])
+}
+
+model Program {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  startDate   DateTime?
+  endDate     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  activities  ActivityProgram[]
+
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model ActivityProgram {
+  id         String   @id @default(cuid())
+  activityId String
+  programId  String
+  createdAt  DateTime @default(now())
+
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  program    Program  @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([activityId, programId])
+  @@index([activityId])
+  @@index([programId])
+}
+
+model Assignment {
+  id            String          @id @default(cuid())
+  userId        String
+  activityId    String
+  allocatedHours Decimal        @db.Decimal(10, 2)
+  startDate     DateTime?
+  endDate       DateTime?
+  status        AssignmentStatus @default(PENDING)
+  billingRate   Decimal?        @db.Decimal(10, 2)
+  costRate      Decimal?        @db.Decimal(10, 2)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity      Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([activityId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model TimeEntry {
+  id            String          @id @default(cuid())
+  userId        String
+  activityId    String
+  date          DateTime
+  hours         Decimal         @db.Decimal(10, 2)
+  description   String?
+  status        TimeEntryStatus @default(DRAFT)
+  approvedById  String?
+  billingRate   Decimal?        @db.Decimal(10, 2)
+  costRate      Decimal?        @db.Decimal(10, 2)
+  billableAmount Decimal?       @db.Decimal(10, 2)
+  costAmount    Decimal?        @db.Decimal(10, 2)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity      Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  approvedBy    User?           @relation("TimeEntryApprover", fields: [approvedById], references: [id])
+
+  @@index([userId])
+  @@index([activityId])
+  @@index([date])
+  @@index([status])
+  @@index([approvedById])
+}
+
+model Schedule {
+  id              String        @id @default(cuid())
+  userId          String
+  activityId      String
+  scheduledStart  DateTime
+  scheduledEnd    DateTime
+  status          ScheduleStatus @default(SCHEDULED)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity        Activity      @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([activityId])
+  @@index([scheduledStart])
+  @@index([scheduledEnd])
+  @@index([status])
+}
+
+model KPI {
+  id          String   @id @default(cuid())
+  name        String
+  targetValue Decimal? @db.Decimal(10, 2)
+  currentValue Decimal? @db.Decimal(10, 2)
+  period      String   // e.g., "2024-01", "2024-Q1"
+  teamId      String?  // Optional team identifier
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([name])
+  @@index([period])
+  @@index([teamId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  message   String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+  @@index([createdAt])
+}
+
+
