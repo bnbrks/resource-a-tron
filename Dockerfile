@@ -28,24 +28,24 @@ COPY frontend/package*.json ./frontend/
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy frontend source files (including all TypeScript fixes and vite-env.d.ts)
-# Updated: 2025-11-22 - Force cache invalidation to pick up latest TypeScript fixes
+# Force cache invalidation by adding timestamp
+ARG BUILD_TIMESTAMP
 COPY frontend ./frontend
 
-# Verify vite-env.d.ts exists and verify all TypeScript fixes are present
-RUN test -f /app/frontend/src/vite-env.d.ts || (echo "ERROR: vite-env.d.ts missing" && exit 1) && \
-    grep -q "import { api }" /app/frontend/src/context/AuthContext.tsx || (echo "ERROR: TypeScript fixes not present" && exit 1)
+# Verify fixes are present (this will fail if Railway is using old cached code)
+RUN test -f /app/frontend/src/vite-env.d.ts || (echo "ERROR: vite-env.d.ts missing - clear Railway cache!" && exit 1)
+
+# Verify TypeScript fixes are present
+RUN grep -q "import { api }" /app/frontend/src/context/AuthContext.tsx || \
+    (echo "ERROR: TypeScript fixes not present - Railway is using cached code! Clear build cache!" && exit 1)
 
 # Install frontend dependencies (this will create frontend/node_modules if needed)
 WORKDIR /app/frontend
 RUN npm install --legacy-peer-deps --prefer-offline --no-audit || true
 
-# Build frontend (skip type check in Docker - Vite will handle it)
-RUN if [ "$BUILD_FRONTEND" != "false" ]; then \
-      npm run build || (echo "Frontend build failed - continuing anyway" && mkdir -p dist); \
-    else \
-      echo "Skipping frontend build"; \
-      mkdir -p dist; \
-    fi
+# Build frontend using Docker build script (skips TypeScript check - Vite handles it)
+# Vite will still do type checking during its build, but won't fail on test files
+RUN npm run build:docker || npm run build
 
 # Build backend
 FROM base AS backend-builder
