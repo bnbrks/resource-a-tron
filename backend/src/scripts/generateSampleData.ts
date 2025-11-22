@@ -126,12 +126,14 @@ async function generateUsers() {
     
     for (let roleIdx = 0; roleIdx < selectedRoles.length; roleIdx++) {
       const role = selectedRoles[roleIdx];
+      const effectiveFrom = new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000); // Random date in past year
       await prisma.userTeamRole.create({
         data: {
           userId: user.id,
           teamRoleId: role.id,
           isCurrent: roleIdx === 0, // First role is current
-          startDate: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000), // Random date in past year
+          effectiveFrom,
+          effectiveTo: roleIdx === 0 ? null : new Date(effectiveFrom.getTime() + 30 * 24 * 60 * 60 * 1000), // Past role ends 30 days later
         },
       });
     }
@@ -216,14 +218,18 @@ async function generateProjects(users: any[]) {
       .sort(() => Math.random() - 0.5)
       .slice(0, numRequiredRoles);
     
-    for (const role of selectedRoles) {
-      const requiredHours = Math.floor(Math.random() * 500) + 100; // 100-600 hours per role
+    for (let idx = 0; idx < selectedRoles.length; idx++) {
+      const role = selectedRoles[idx];
+      const allocatedHours = Math.floor(Math.random() * 500) + 100; // 100-600 hours per role
       await prisma.activityScope.create({
         data: {
           activityId: project.id,
           teamRoleId: role.id,
-          requiredHours: parseFloat(requiredHours.toString()),
-          priority: ['HIGH', 'MEDIUM', 'LOW'][Math.floor(Math.random() * 3)] as any,
+          allocatedHours: parseFloat(allocatedHours.toString()),
+          billingRate: parseFloat(role.billingRate.toString()),
+          costRate: parseFloat(role.costRate.toString()),
+          phaseName: ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4'][idx] || 'Phase 1',
+          sequence: idx,
         },
       });
     }
