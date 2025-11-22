@@ -10,8 +10,9 @@ COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 COPY backend/package*.json ./backend/
 
-# Install all dependencies (npm install handles workspaces automatically)
-RUN npm install
+# Install all dependencies with memory optimization
+# Use --legacy-peer-deps to avoid memory issues with peer dependencies
+RUN npm install --legacy-peer-deps --prefer-offline --no-audit
 
 # Build frontend
 FROM base AS frontend-builder
@@ -32,7 +33,7 @@ COPY backend ./backend
 COPY package*.json ./
 WORKDIR /app/backend
 
-# Generate Prisma Client
+# Generate Prisma Client (already in node_modules, no global install needed)
 RUN npx prisma generate
 
 # Build TypeScript
