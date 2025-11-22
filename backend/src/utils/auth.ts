@@ -17,9 +17,10 @@ export async function comparePassword(
 }
 
 export function generateToken(userId: string): string {
-  return jwt.sign({ userId }, JWT_SECRET, {
+  const options: jwt.SignOptions = {
     expiresIn: JWT_EXPIRES_IN,
-  } as jwt.SignOptions)
+  };
+  return jwt.sign({ userId }, JWT_SECRET, options);
 }
 
 export function verifyToken(token: string): { userId: string } {

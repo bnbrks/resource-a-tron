@@ -106,14 +106,16 @@ async function evaluateUserForProject(
   // Check skills match
   // Note: ActivityScope doesn't have skill requirements, so we'll simplify this for now
   // In the future, skills should be associated with TeamRole or Activity
-  const userSkills = new Map(
-    user.skills.map((s: any) => {
-      const skillName = s.skill?.name || '';
-      const proficiencyLevel = typeof s.proficiencyLevel === 'number' 
-        ? ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][s.proficiencyLevel - 1] || 'BEGINNER'
-        : 'BEGINNER';
-      return [skillName, proficiencyLevel];
-    })
+  const userSkills = new Map<string, string>(
+    user.skills
+      .filter((s: any) => s.skill?.name) // Only include skills with names
+      .map((s: any) => {
+        const skillName = s.skill?.name as string;
+        const proficiencyLevel = typeof s.proficiencyLevel === 'number' 
+          ? (['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'][s.proficiencyLevel - 1] || 'BEGINNER')
+          : 'BEGINNER';
+        return [skillName, proficiencyLevel] as [string, string];
+      })
   );
 
   let matchedRequirements = 0;

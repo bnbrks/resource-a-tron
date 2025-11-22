@@ -63,13 +63,14 @@ export async function getUserCapacity(
   }
 
   // Calculate allocated hours per week
-  allocations.forEach((allocation: any) => {
+  allocations.forEach((allocation) => {
     if (!allocation.startDate) return;
     const allocStart = new Date(allocation.startDate);
     const allocEnd = allocation.endDate ? new Date(allocation.endDate) : endDate;
-    const allocatedHours = typeof allocation.allocatedHours === 'number' 
-      ? allocation.allocatedHours 
-      : parseFloat(allocation.allocatedHours.toString());
+    const allocatedHoursValue = allocation.allocatedHours;
+    const allocatedHours = typeof allocatedHoursValue === 'number' 
+      ? allocatedHoursValue 
+      : parseFloat(allocatedHoursValue.toString());
 
     const current = new Date(allocStart);
     while (current <= allocEnd && current <= endDate) {

@@ -320,9 +320,10 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
       },
     });
 
-    const result = summary.map((s: any) => {
-      const activity = activities.find((a: { id: string }) => a.id === s.activityId);
-      const hours = s._sum.hours ? (typeof s._sum.hours === 'number' ? s._sum.hours : parseFloat(s._sum.hours.toString())) : 0;
+    const result = summary.map((s) => {
+      const activity = activities.find((a) => a.id === s.activityId);
+      const hoursValue = s._sum.hours;
+      const hours = hoursValue ? (typeof hoursValue === 'number' ? hoursValue : parseFloat(hoursValue.toString())) : 0;
       return {
         activityId: s.activityId,
         activity: activity ? {
