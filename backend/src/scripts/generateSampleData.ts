@@ -105,11 +105,6 @@ async function generateUsers() {
         name,
         passwordHash,
         role,
-        developmentAreas: [
-          'Leadership Development',
-          'Technical Skills',
-          'Client Management',
-        ].slice(0, Math.floor(Math.random() * 3) + 1),
       },
     });
 
@@ -124,11 +119,25 @@ async function generateUsers() {
       const level: ProficiencyLevel = proficiencyLevels[Math.floor(Math.random() * proficiencyLevels.length)];
       const certified = Math.random() > 0.7; // 30% certified
 
+      // First, find or create the skill
+      let skill = await prisma.skill.findUnique({
+        where: { name: skillName },
+      });
+      
+      if (!skill) {
+        skill = await prisma.skill.create({
+          data: {
+            name: skillName,
+            category: 'Technical',
+          },
+        });
+      }
+      
       await prisma.userSkill.create({
         data: {
           userId: user.id,
-          skillName,
-          proficiencyLevel: level,
+          skillId: skill.id,
+          proficiencyLevel: level === 'BEGINNER' ? 1 : level === 'INTERMEDIATE' ? 2 : level === 'ADVANCED' ? 3 : 4,
           certified,
         },
       });
@@ -158,37 +167,20 @@ async function generateProjects(users: any[]) {
 
     const budgetHours = Math.floor(Math.random() * 2000) + 500; // 500-2500 hours
 
-    const project = await prisma.project.create({
+    const project = await prisma.activity.create({
       data: {
         name,
         description: `Comprehensive ${name.toLowerCase()} initiative for ${client}`,
-        client,
-        status,
+        type: 'PROJECT',
+        status: status as any,
         startDate,
         endDate,
-        budgetHours,
+        budgetHours: parseFloat(budgetHours.toString()),
       },
     });
 
-    // Add requirements
-    const numRequirements = Math.floor(Math.random() * 5) + 2; // 2-6 requirements
-    const selectedSkills = [...INSURANCE_SKILLS]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, numRequirements);
-
-    for (let j = 0; j < selectedSkills.length; j++) {
-      const proficiencyLevels: ProficiencyLevel[] = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'];
-      const level: ProficiencyLevel = proficiencyLevels[Math.floor(Math.random() * proficiencyLevels.length) + 1] || 'INTERMEDIATE';
-
-      await prisma.projectRequirement.create({
-        data: {
-          projectId: project.id,
-          skillName: selectedSkills[j],
-          requiredLevel: level,
-          priority: j + 1,
-        },
-      });
-    }
+    // Note: ActivityScope requires teamRoleId which we would need to create first
+    // Skipping scope creation for now to simplify the script
 
     projects.push(project);
   }
@@ -206,12 +198,11 @@ async function generateTasks(projects: any[]) {
   for (const project of projects) {
     const numTasks = Math.floor(Math.random() * 5) + 2; // 2-6 tasks per project
     for (let i = 0; i < numTasks; i++) {
-      const task = await prisma.task.create({
+      const task = await prisma.activity.create({
         data: {
           name: `Task ${i + 1} for ${project.name}`,
           description: `Detailed work item for ${project.name}`,
-          type: 'PROJECT' as TaskType,
-          projectId: project.id,
+          type: 'PROJECT',
           startDate: project.startDate,
           endDate: project.endDate,
         },
@@ -227,11 +218,11 @@ async function generateTasks(projects: any[]) {
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 5) + 1);
 
-    const task = await prisma.task.create({
+    const task = await prisma.activity.create({
       data: {
         name: `Training: ${INSURANCE_SKILLS[Math.floor(Math.random() * INSURANCE_SKILLS.length)]}`,
         description: 'Professional development training session',
-        type: 'TRAINING' as TaskType,
+        type: 'INTERNAL',
         startDate,
         endDate,
       },
@@ -246,11 +237,11 @@ async function generateTasks(projects: any[]) {
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 10) + 1);
 
-    const task = await prisma.task.create({
+    const task = await prisma.activity.create({
       data: {
         name: `PTO - ${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]}`,
         description: 'Paid time off',
-        type: 'PTO' as TaskType,
+        type: 'PTO',
         startDate,
         endDate,
       },
@@ -265,11 +256,11 @@ async function generateTasks(projects: any[]) {
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + Math.floor(Math.random() * 5) + 1);
 
-    const task = await prisma.task.create({
+    const task = await prisma.activity.create({
       data: {
         name: `Other Activity ${i + 1}`,
         description: 'Miscellaneous team activity',
-        type: 'OTHER' as TaskType,
+        type: 'NON_BILLABLE',
         startDate,
         endDate,
       },
@@ -286,7 +277,7 @@ async function generateAllocations(users: any[], tasks: any[]) {
   let allocationCount = 0;
 
   // Allocate users to project tasks
-  const projectTasks = tasks.filter((t: { type: TaskType }) => t.type === 'PROJECT');
+  const projectTasks = tasks.filter((t: { type: string }) => t.type === 'PROJECT');
   
   for (const task of projectTasks) {
     const numAllocations = Math.floor(Math.random() * 3) + 1; // 1-3 users per task
@@ -299,12 +290,11 @@ async function generateAllocations(users: any[], tasks: any[]) {
       const startDate = task.startDate || new Date();
       const endDate = task.endDate || null;
 
-      await prisma.allocation.create({
+      await prisma.assignment.create({
         data: {
           userId: user.id,
-          taskId: task.id,
-          projectId: task.projectId,
-          allocatedHours,
+          activityId: task.id,
+          allocatedHours: parseFloat(allocatedHours.toString()),
           startDate,
           endDate,
         },
@@ -314,7 +304,7 @@ async function generateAllocations(users: any[], tasks: any[]) {
   }
 
   // Allocate users to training
-  const trainingTasks = tasks.filter((t: { type: TaskType }) => t.type === 'TRAINING');
+  const trainingTasks = tasks.filter((t: { type: string }) => t.type === 'INTERNAL');
   for (const task of trainingTasks) {
     const numAllocations = Math.floor(Math.random() * 5) + 3; // 3-7 users per training
     const selectedUsers = [...users]
@@ -322,10 +312,10 @@ async function generateAllocations(users: any[], tasks: any[]) {
       .slice(0, numAllocations);
 
     for (const user of selectedUsers) {
-      await prisma.allocation.create({
+      await prisma.assignment.create({
         data: {
           userId: user.id,
-          taskId: task.id,
+          activityId: task.id,
           allocatedHours: 8, // Full day training
           startDate: task.startDate || new Date(),
           endDate: task.endDate || null,
@@ -362,7 +352,7 @@ async function generateTimeEntries(users: any[], tasks: any[]) {
 
     for (const user of usersToLog) {
       // Find user's allocations for this date
-      const userAllocations = await prisma.allocation.findMany({
+      const userAllocations = await prisma.assignment.findMany({
         where: {
           userId: user.id,
           OR: [
@@ -380,24 +370,24 @@ async function generateTimeEntries(users: any[], tasks: any[]) {
           ],
         },
         include: {
-          task: true,
+          activity: true,
         },
       });
 
       // Log time for some allocations
       for (const allocation of userAllocations) {
         if (Math.random() > 0.3) { // 70% chance to log time
-          const hours = allocation.allocatedHours / 5 + (Math.random() - 0.5) * 2; // Some variance
+          const hours = parseFloat(allocation.allocatedHours.toString()) / 5 + (Math.random() - 0.5) * 2; // Some variance
           const clampedHours = Math.max(0.25, Math.min(8, hours));
 
           try {
             await prisma.timeEntry.create({
               data: {
                 userId: user.id,
-                taskId: allocation.taskId,
+                activityId: allocation.activityId,
                 date: currentDate,
-                hours: Math.round(clampedHours * 4) / 4, // Round to 0.25
-                description: `Work on ${allocation.task.name}`,
+                hours: parseFloat((Math.round(clampedHours * 4) / 4).toString()), // Round to 0.25
+                description: `Work on ${allocation.activity.name}`,
               },
             });
             entryCount++;
@@ -418,10 +408,9 @@ async function main() {
   try {
     // Clear existing data (optional - comment out if you want to keep existing data)
     // await prisma.timeEntry.deleteMany();
-    // await prisma.allocation.deleteMany();
-    // await prisma.task.deleteMany();
-    // await prisma.projectRequirement.deleteMany();
-    // await prisma.project.deleteMany();
+    // await prisma.assignment.deleteMany();
+    // await prisma.activity.deleteMany();
+    // await prisma.activityScope.deleteMany();
     // await prisma.userSkill.deleteMany();
     // await prisma.user.deleteMany();
 

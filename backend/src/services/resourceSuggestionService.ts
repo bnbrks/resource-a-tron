@@ -24,10 +24,10 @@ export async function suggestResources(
   requiredHoursPerWeek: number
 ): Promise<ResourceSuggestion[]> {
   // Get project requirements
-  const project = await prisma.project.findUnique({
+  const project = await prisma.activity.findUnique({
     where: { id: projectId },
     include: {
-      requirements: true,
+      scopes: true,
     },
   });
 
@@ -39,7 +39,7 @@ export async function suggestResources(
   const users = await prisma.user.findMany({
     include: {
       skills: true,
-      allocations: {
+      assignments: {
         where: {
           OR: [
             {
@@ -70,9 +70,9 @@ export async function suggestResources(
   const suggestions: ResourceSuggestion[] = [];
 
   for (const user of users) {
-    const suggestion = await evaluateUserForProject(
+    const     suggestion = await evaluateUserForProject(
       user,
-      project.requirements,
+      project.scopes, // Using scopes instead of requirements
       startDate,
       endDate,
       requiredHoursPerWeek
@@ -141,7 +141,7 @@ async function evaluateUserForProject(
     reasons.push('Available for the entire period');
   } else {
     // Find next available date
-    const conflicts = await prisma.allocation.findMany({
+    const conflicts = await prisma.assignment.findMany({
       where: {
         userId: user.id,
         OR: [
@@ -183,7 +183,7 @@ async function evaluateUserForProject(
   const weeks = daysDiff / 7;
   const capacityHours = weeks * 40; // Standard 40 hours/week
 
-  const allocatedHours = user.allocations.reduce((sum: number, alloc: any) => {
+  const allocatedHours = user.assignments.reduce((sum: number, alloc: any) => {
     const allocStart = new Date(Math.max(alloc.startDate.getTime(), startDate.getTime()));
     const allocEnd = alloc.endDate
       ? new Date(Math.min(alloc.endDate.getTime(), endDate.getTime()))
@@ -230,10 +230,10 @@ export async function estimateStartDate(
   requiredHoursPerWeek: number,
   teamSize: number
 ): Promise<Date | null> {
-  const project = await prisma.project.findUnique({
+  const project = await prisma.activity.findUnique({
     where: { id: projectId },
     include: {
-      requirements: true,
+      scopes: true,
     },
   });
 

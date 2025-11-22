@@ -15,7 +15,7 @@ export async function getUserCapacity(
   endDate: Date,
   standardHoursPerWeek: number = 40
 ): Promise<CapacityInfo[]> {
-  const allocations = await prisma.allocation.findMany({
+  const allocations = await prisma.assignment.findMany({
     where: {
       userId,
       OR: [
@@ -95,7 +95,7 @@ export async function checkAllocationConflict(
   startDate: Date,
   endDate: Date
 ): Promise<boolean> {
-  const conflict = await prisma.allocation.findFirst({
+  const conflict = await prisma.assignment.findFirst({
     where: {
       userId,
       OR: [

@@ -7,14 +7,14 @@ const router = Router();
 // Get all time entries
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { userId, taskId, startDate, endDate } = req.query;
+    const { userId, activityId, startDate, endDate } = req.query;
 
     const where: any = {};
     if (userId) {
       where.userId = userId as string;
     }
-    if (taskId) {
-      where.taskId = taskId as string;
+    if (activityId) {
+      where.activityId = activityId as string;
     }
     if (startDate || endDate) {
       where.date = {};
@@ -36,14 +36,11 @@ router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
             email: true,
           },
         },
-        task: {
-          include: {
-            project: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+        activity: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
           },
         },
       },
@@ -68,11 +65,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       where: { id },
       include: {
         user: true,
-        task: {
-          include: {
-            project: true,
-          },
-        },
+        activity: true,
       },
     });
 
@@ -90,43 +83,45 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 // Create time entry
 router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { taskId, date, hours, description } = req.body;
-    const userId = req.userId!;
+    const { activityId, date, hours, description } = req.body;
+    const userId = req.user?.id;
 
-    if (!taskId || !date || !hours) {
-      return res.status(400).json({ error: 'Task ID, date, and hours are required' });
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!activityId || !date || !hours) {
+      return res.status(400).json({ error: 'Activity ID, date, and hours are required' });
     }
 
     if (hours <= 0) {
       return res.status(400).json({ error: 'Hours must be greater than 0' });
     }
 
-    // Check if task exists
-    const task = await prisma.task.findUnique({
-      where: { id: taskId },
+    // Check if activity exists
+    const activity = await prisma.activity.findUnique({
+      where: { id: activityId },
     });
 
-    if (!task) {
-      return res.status(404).json({ error: 'Task not found' });
+    if (!activity) {
+      return res.status(404).json({ error: 'Activity not found' });
     }
 
-    // Validate date is within task dates if they exist
+    // Validate date is within activity dates if they exist
     const entryDate = new Date(date);
-    if (task.startDate && entryDate < new Date(task.startDate)) {
-      return res.status(400).json({ error: 'Date is before task start date' });
+    if (activity.startDate && entryDate < new Date(activity.startDate)) {
+      return res.status(400).json({ error: 'Date is before activity start date' });
     }
-    if (task.endDate && entryDate > new Date(task.endDate)) {
-      return res.status(400).json({ error: 'Date is after task end date' });
+    if (activity.endDate && entryDate > new Date(activity.endDate)) {
+      return res.status(400).json({ error: 'Date is after activity end date' });
     }
 
-    // Check for existing entry on same date for same user/task
-    const existing = await prisma.timeEntry.findUnique({
+    // Check for existing entry on same date for same user/activity
+    const existing = await prisma.timeEntry.findFirst({
       where: {
-        userId_taskId_date: {
-          userId,
-          taskId,
-          date: entryDate,
-        },
+        userId,
+        activityId,
+        date: entryDate,
       },
     });
 
@@ -137,7 +132,7 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
     const timeEntry = await prisma.timeEntry.create({
       data: {
         userId,
-        taskId,
+        activityId,
         date: entryDate,
         hours: parseFloat(hours),
         description,
@@ -150,14 +145,11 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
             email: true,
           },
         },
-        task: {
-          include: {
-            project: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+        activity: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
           },
         },
       },
@@ -178,13 +170,17 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { date, hours, description } = req.body;
-    const userId = req.userId!;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     // Check if entry exists and belongs to user (or user is admin/manager)
     const existing = await prisma.timeEntry.findUnique({
       where: { id },
       include: {
-        task: true,
+        activity: true,
       },
     });
 
@@ -192,7 +188,8 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Time entry not found' });
     }
 
-    if (existing.userId !== userId && req.userRole !== 'ADMIN' && req.userRole !== 'MANAGER') {
+    const userRole = req.user?.role;
+    if (existing.userId !== userId && userRole !== 'ADMIN' && userRole !== 'MANAGER') {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
@@ -204,11 +201,11 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     // Validate date if changed
     if (date) {
       const entryDate = new Date(date);
-      if (existing.task.startDate && entryDate < new Date(existing.task.startDate)) {
-        return res.status(400).json({ error: 'Date is before task start date' });
+      if (existing.activity.startDate && entryDate < new Date(existing.activity.startDate)) {
+        return res.status(400).json({ error: 'Date is before activity start date' });
       }
-      if (existing.task.endDate && entryDate > new Date(existing.task.endDate)) {
-        return res.status(400).json({ error: 'Date is after task end date' });
+      if (existing.activity.endDate && entryDate > new Date(existing.activity.endDate)) {
+        return res.status(400).json({ error: 'Date is after activity end date' });
       }
     }
 
@@ -227,14 +224,11 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
             email: true,
           },
         },
-        task: {
-          include: {
-            project: {
-              select: {
-                id: true,
-                name: true,
-              },
-            },
+        activity: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
           },
         },
       },
@@ -251,7 +245,11 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const userId = req.userId!;
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
     // Check if entry exists and belongs to user (or user is admin/manager)
     const existing = await prisma.timeEntry.findUnique({
@@ -262,7 +260,8 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Time entry not found' });
     }
 
-    if (existing.userId !== userId && req.userRole !== 'ADMIN' && req.userRole !== 'MANAGER') {
+    const userRole = req.user?.role;
+    if (existing.userId !== userId && userRole !== 'ADMIN' && userRole !== 'MANAGER') {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 
@@ -280,14 +279,14 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
 // Get time summary
 router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { userId, taskId, projectId, startDate, endDate } = req.query;
+    const { userId, activityId, startDate, endDate } = req.query;
 
     const where: any = {};
     if (userId) {
       where.userId = userId as string;
     }
-    if (taskId) {
-      where.taskId = taskId as string;
+    if (activityId) {
+      where.activityId = activityId as string;
     }
     if (startDate || endDate) {
       where.date = {};
@@ -299,16 +298,8 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
       }
     }
 
-    if (projectId) {
-      const tasks = await prisma.task.findMany({
-        where: { projectId: projectId as string },
-        select: { id: true },
-      });
-      where.taskId = { in: tasks.map((t: { id: string }) => t.id) };
-    }
-
     const summary = await prisma.timeEntry.groupBy({
-      by: ['taskId'],
+      by: ['activityId'],
       where,
       _sum: {
         hours: true,
@@ -318,28 +309,25 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
       },
     });
 
-    // Get task details
-    const taskIds = summary.map((s: { taskId: string }) => s.taskId);
-    const tasks = await prisma.task.findMany({
-      where: { id: { in: taskIds } },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+    // Get activity details
+    const activityIds = summary.map((s: { activityId: string }) => s.activityId);
+    const activities = await prisma.activity.findMany({
+      where: { id: { in: activityIds } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
       },
     });
 
-    const result = summary.map((s: { taskId: string; _sum: { hours: number | null }; _count: { id: number } }) => {
-      const task = tasks.find((t: { id: string }) => t.id === s.taskId);
+    const result = summary.map((s: { activityId: string; _sum: { hours: number | null }; _count: { id: number } }) => {
+      const activity = activities.find((a: { id: string }) => a.id === s.activityId);
       return {
-        taskId: s.taskId,
-        task: task ? {
-          id: task.id,
-          name: task.name,
-          project: task.project,
+        activityId: s.activityId,
+        activity: activity ? {
+          id: activity.id,
+          name: activity.name,
+          type: activity.type,
         } : null,
         totalHours: s._sum.hours || 0,
         entryCount: s._count.id,

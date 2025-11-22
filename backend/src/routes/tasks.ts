@@ -7,29 +7,23 @@ const router = Router();
 // Get all tasks
 router.get('/', authenticate, async (req: AuthRequest, res: Response) => {
   try {
-    const { type, projectId } = req.query;
+    const { type } = req.query;
 
     const where: any = {};
     if (type) {
       where.type = type;
-    }
-    if (projectId) {
-      where.projectId = projectId;
+    } else {
+      // Default to INTERNAL or other task types (not PROJECT)
+      where.type = { not: 'PROJECT' };
     }
 
-    const tasks = await prisma.task.findMany({
+    const tasks = await prisma.activity.findMany({
       where,
       include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
         _count: {
           select: {
             timeEntries: true,
-            allocations: true,
+            assignments: true,
           },
         },
       },
@@ -50,11 +44,10 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
-    const task = await prisma.task.findUnique({
+    const task = await prisma.activity.findUnique({
       where: { id },
       include: {
-        project: true,
-        allocations: {
+        assignments: {
           include: {
             user: {
               select: {
@@ -101,32 +94,13 @@ router.post('/', authenticate, async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: 'Task name and type are required' });
     }
 
-    // Validate projectId if provided
-    if (projectId) {
-      const project = await prisma.project.findUnique({
-        where: { id: projectId },
-      });
-      if (!project) {
-        return res.status(404).json({ error: 'Project not found' });
-      }
-    }
-
-    const task = await prisma.task.create({
+    const task = await prisma.activity.create({
       data: {
         name,
         description,
-        type,
-        projectId: projectId || null,
+        type: type || 'INTERNAL',
         startDate: startDate ? new Date(startDate) : null,
         endDate: endDate ? new Date(endDate) : null,
-      },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
       },
     });
 
@@ -143,23 +117,14 @@ router.put('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const { name, description, type, projectId, startDate, endDate } = req.body;
 
-    const task = await prisma.task.update({
+    const task = await prisma.activity.update({
       where: { id },
       data: {
         ...(name && { name }),
         ...(description !== undefined && { description }),
         ...(type && { type }),
-        ...(projectId !== undefined && { projectId: projectId || null }),
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
         ...(endDate !== undefined && { endDate: endDate ? new Date(endDate) : null }),
-      },
-      include: {
-        project: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
       },
     });
 
@@ -175,7 +140,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
-    await prisma.task.delete({
+    await prisma.activity.delete({
       where: { id },
     });
 

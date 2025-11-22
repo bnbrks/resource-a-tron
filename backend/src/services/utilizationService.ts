@@ -17,7 +17,7 @@ export async function calculateUserUtilization(
   standardHoursPerWeek: number = 40
 ): Promise<UtilizationData> {
   // Get allocations
-  const allocations = await prisma.allocation.findMany({
+  const allocations = await prisma.assignment.findMany({
     where: {
       userId,
       OR: [
@@ -66,7 +66,10 @@ export async function calculateUserUtilization(
   });
 
   // Calculate actual hours
-  const actualHours = timeEntries.reduce((sum: number, entry: { hours: number }) => sum + entry.hours, 0);
+  const actualHours = timeEntries.reduce((sum: number, entry: { hours: any }) => {
+    const hours = typeof entry.hours === 'number' ? entry.hours : parseFloat(entry.hours.toString());
+    return sum + hours;
+  }, 0);
 
   // Calculate utilization
   const utilizationPercent = capacityHours > 0 ? (actualHours / capacityHours) * 100 : 0;
@@ -115,13 +118,15 @@ export async function getActivitySummary(
   uniqueUsers: number;
 }> {
   const [projects, activeProjects, tasks, timeEntries, users] = await Promise.all([
-    prisma.project.count({
+    prisma.activity.count({
       where: {
+        type: 'PROJECT',
         createdAt: { lte: endDate },
       },
     }),
-    prisma.project.count({
+    prisma.activity.count({
       where: {
+        type: 'PROJECT',
         status: 'ACTIVE',
         OR: [
           {
@@ -138,8 +143,9 @@ export async function getActivitySummary(
         ],
       },
     }),
-    prisma.task.count({
+    prisma.activity.count({
       where: {
+        type: { in: ['PROJECT', 'INTERNAL'] },
         createdAt: { lte: endDate },
       },
     }),
@@ -158,8 +164,11 @@ export async function getActivitySummary(
     prisma.user.count(),
   ]);
 
-  const totalHours = timeEntries.reduce((sum: number, entry: { hours: number; userId: string }) => sum + entry.hours, 0);
-  const uniqueUsers = new Set(timeEntries.map((e: { hours: number; userId: string }) => e.userId)).size;
+  const totalHours = timeEntries.reduce((sum: number, entry: { hours: any; userId: string }) => {
+    const hours = typeof entry.hours === 'number' ? entry.hours : parseFloat(entry.hours.toString());
+    return sum + hours;
+  }, 0);
+  const uniqueUsers = new Set(timeEntries.map((e: { hours: any; userId: string }) => e.userId)).size;
 
   return {
     totalProjects: projects,
