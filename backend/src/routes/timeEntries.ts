@@ -320,8 +320,9 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
       },
     });
 
-    const result = summary.map((s: { activityId: string; _sum: { hours: number | null }; _count: { id: number } }) => {
+    const result = summary.map((s: any) => {
       const activity = activities.find((a: { id: string }) => a.id === s.activityId);
+      const hours = s._sum.hours ? (typeof s._sum.hours === 'number' ? s._sum.hours : parseFloat(s._sum.hours.toString())) : 0;
       return {
         activityId: s.activityId,
         activity: activity ? {
@@ -329,7 +330,7 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
           name: activity.name,
           type: activity.type,
         } : null,
-        totalHours: s._sum.hours || 0,
+        totalHours: hours,
         entryCount: s._count.id,
       };
     });

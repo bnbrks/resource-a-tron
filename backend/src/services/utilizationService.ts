@@ -54,15 +54,19 @@ export async function calculateUserUtilization(
 
   // Calculate allocated hours (sum of weekly allocations)
   let allocatedHours = 0;
-  allocations.forEach((allocation: { startDate: Date; endDate: Date | null; allocatedHours: number }) => {
-    const allocStart = new Date(Math.max(allocation.startDate.getTime(), startDate.getTime()));
+  allocations.forEach((allocation: any) => {
+    if (!allocation.startDate) return;
+    const allocStart = new Date(Math.max(new Date(allocation.startDate).getTime(), startDate.getTime()));
     const allocEnd = allocation.endDate
-      ? new Date(Math.min(allocation.endDate.getTime(), endDate.getTime()))
+      ? new Date(Math.min(new Date(allocation.endDate).getTime(), endDate.getTime()))
       : endDate;
     
     const allocDays = Math.ceil((allocEnd.getTime() - allocStart.getTime()) / (1000 * 60 * 60 * 24));
     const allocWeeks = allocDays / 7;
-    allocatedHours += allocWeeks * allocation.allocatedHours;
+    const allocatedHoursValue = typeof allocation.allocatedHours === 'number'
+      ? allocation.allocatedHours
+      : parseFloat(allocation.allocatedHours.toString());
+    allocatedHours += allocWeeks * allocatedHoursValue;
   });
 
   // Calculate actual hours

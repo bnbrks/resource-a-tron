@@ -18,8 +18,8 @@ export async function comparePassword(
 
 export function generateToken(userId: string): string {
   return jwt.sign({ userId }, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN as string | number,
-  })
+    expiresIn: JWT_EXPIRES_IN,
+  } as jwt.SignOptions)
 }
 
 export function verifyToken(token: string): { userId: string } {
