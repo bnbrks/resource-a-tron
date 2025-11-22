@@ -58,11 +58,15 @@ COPY backend/package*.json ./backend/
 # Copy root node_modules from deps (workspace hoisting)
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy backend source files
+# Copy backend source files ONLY (don't copy frontend to avoid TypeScript conflicts)
 COPY backend ./backend
 
 # Install backend dependencies (this will create backend/node_modules if needed)
 WORKDIR /app/backend
+
+# Ensure we're building from the backend directory and only include backend files
+# Set environment to prevent TypeScript from resolving outside backend directory
+ENV TS_NODE_PROJECT=./tsconfig.json
 RUN npm install --legacy-peer-deps --prefer-offline --no-audit || true
 
 # Generate Prisma Client (already in node_modules, no global install needed)
@@ -70,8 +74,13 @@ RUN npx prisma generate
 
 # Build TypeScript with increased memory limit
 # Exit code 137 = out of memory, so we increase Node.js memory limit
+# Use tsc directly with explicit project file to ensure it only compiles backend
 ENV NODE_OPTIONS="--max-old-space-size=2048"
-RUN npm run build
+# Verify we're in the backend directory and only backend files exist
+RUN pwd && ls -la && test -f tsconfig.json || (echo "ERROR: Not in backend directory!" && exit 1)
+RUN test ! -d ../frontend/src || (echo "ERROR: Frontend files detected in backend build context!" && exit 1)
+# Run TypeScript compiler explicitly from backend directory
+RUN npx tsc --project ./tsconfig.json
 
 # Production image
 FROM base AS runner
@@ -80,8 +89,10 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Copy built applications
-# Frontend dist is optional (may not exist if frontend wasn't built)
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist 2>/dev/null || mkdir -p ./frontend/dist
+# Frontend dist is optional (create directory first)
+RUN mkdir -p ./frontend/dist
+# Copy frontend dist (use wildcard to handle missing dir gracefully - will create empty dir if source doesn't exist)
+COPY --from=frontend-builder /app/frontend/dist* ./frontend/ || echo "Frontend dist not found, continuing..."
 COPY --from=backend-builder /app/backend/dist ./backend/dist
 COPY --from=backend-builder /app/backend/package.json ./backend/
 COPY --from=backend-builder /app/backend/prisma ./backend/prisma
