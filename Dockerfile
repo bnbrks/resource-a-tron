@@ -17,21 +17,35 @@ RUN npm install --legacy-peer-deps --prefer-offline --no-audit
 # Build frontend
 FROM base AS frontend-builder
 WORKDIR /app
+
+# Copy root node_modules (workspace hoisting)
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
+
+# Copy frontend files
 COPY frontend ./frontend
 COPY package*.json ./
+
+# Install frontend dependencies if needed (workspace might not hoist all)
 WORKDIR /app/frontend
+RUN npm install --legacy-peer-deps --prefer-offline --no-audit || true
+
+# Build frontend
 RUN npm run build
 
 # Build backend
 FROM base AS backend-builder
 WORKDIR /app
+
+# Copy root node_modules (workspace hoisting)
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/backend/node_modules ./backend/node_modules
+
+# Copy backend files
 COPY backend ./backend
 COPY package*.json ./
+
+# Install backend dependencies if needed (workspace might not hoist all)
 WORKDIR /app/backend
+RUN npm install --legacy-peer-deps --prefer-offline --no-audit || true
 
 # Generate Prisma Client (already in node_modules, no global install needed)
 RUN npx prisma generate
