@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import api from '../lib/api'
+import { api } from '../lib/api'
 import { User, AuthResponse } from '../types'
 
 interface AuthContextType {
@@ -19,8 +19,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const token = localStorage.getItem('token')
     if (token) {
-      api.get('/auth/me')
-        .then(response => setUser(response.data))
+      api.get<User>('/users/me')
+        .then((user: User) => setUser(user))
         .catch(() => {
           localStorage.removeItem('token')
           setUser(null)
@@ -33,8 +33,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const response = await api.post<AuthResponse>('/auth/login', { email, password })
-    localStorage.setItem('token', response.data.token)
-    setUser(response.data.user)
+    localStorage.setItem('token', response.token)
+    setUser(response.user)
   }
 
   const logout = () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import api from '../lib/api'
+import { api } from '../lib/api'
 import { format, startOfMonth, endOfMonth, eachWeekOfInterval, startOfWeek, endOfWeek } from 'date-fns'
 
 interface Allocation {
@@ -40,8 +40,8 @@ export default function ResourceAllocation() {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/users')
-      setUsers(response.data)
+      const users = await api.get<unknown[]>('/users')
+      setUsers(Array.isArray(users) ? users : [])
     } catch (error) {
       console.error('Error fetching users:', error)
     }
@@ -49,8 +49,8 @@ export default function ResourceAllocation() {
 
   const fetchTasks = async () => {
     try {
-      const response = await api.get('/tasks')
-      setTasks(response.data)
+      const tasks = await api.get<unknown[]>('/tasks')
+      setTasks(Array.isArray(tasks) ? tasks : [])
     } catch (error) {
       console.error('Error fetching tasks:', error)
     }
@@ -61,13 +61,12 @@ export default function ResourceAllocation() {
       const monthStart = startOfMonth(selectedMonth)
       const monthEnd = endOfMonth(selectedMonth)
       
-      const response = await api.get('/allocations', {
-        params: {
-          startDate: monthStart.toISOString(),
-          endDate: monthEnd.toISOString(),
-        },
-      })
-      setAllocations(response.data)
+      const queryParams = new URLSearchParams()
+      queryParams.append('startDate', monthStart.toISOString())
+      queryParams.append('endDate', monthEnd.toISOString())
+      
+      const allocations = await api.get<Allocation[]>(`/allocations?${queryParams.toString()}`)
+      setAllocations(Array.isArray(allocations) ? allocations : [])
     } catch (error) {
       console.error('Error fetching allocations:', error)
     } finally {
@@ -210,8 +209,9 @@ function CreateAllocationModal({
       })
       onSuccess()
       onClose()
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Error creating allocation')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error creating allocation'
+      alert(errorMessage)
     }
   }
 

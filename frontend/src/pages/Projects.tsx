@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import api from '../lib/api'
+import { api } from '../lib/api'
 import { Project, ProjectStatus } from '../types'
 
 export default function Projects() {
@@ -14,8 +14,8 @@ export default function Projects() {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/projects')
-      setProjects(response.data)
+      const projects = await api.get<Project[]>('/projects')
+      setProjects(Array.isArray(projects) ? projects : [])
     } catch (error) {
       console.error('Error fetching projects:', error)
     } finally {

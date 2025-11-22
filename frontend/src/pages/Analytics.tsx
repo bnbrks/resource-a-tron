@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import api from '../lib/api'
+import { api } from '../lib/api'
 import { format, subDays } from 'date-fns'
 
 interface UtilizationData {
@@ -35,17 +35,14 @@ export default function Analytics() {
 
   const fetchData = async () => {
     try {
-      const [utilResponse, activityResponse] = await Promise.all([
-        api.get('/analytics/utilization/team', {
-          params: { startDate, endDate },
-        }),
-        api.get('/analytics/activity', {
-          params: { startDate, endDate },
-        }),
+      const queryParams = `?startDate=${startDate}&endDate=${endDate}`
+      const [utilizationData, activityData] = await Promise.all([
+        api.get<UtilizationData[]>(`/analytics/utilization/team${queryParams}`),
+        api.get<ActivitySummary>(`/analytics/activity${queryParams}`),
       ])
-      setUtilization(utilResponse.data)
-      setActivity(activityResponse.data)
-    } catch (error) {
+      setUtilization(Array.isArray(utilizationData) ? utilizationData : [])
+      setActivity(activityData || null)
+    } catch (error: unknown) {
       console.error('Error fetching analytics:', error)
     } finally {
       setLoading(false)

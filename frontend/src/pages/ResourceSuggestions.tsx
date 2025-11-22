@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import api from '../lib/api'
+import { api } from '../lib/api'
 import { format } from 'date-fns'
 
 interface ResourceSuggestion {
@@ -29,8 +29,8 @@ export default function ResourceSuggestions() {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/projects')
-      setProjects(response.data)
+      const projects = await api.get<unknown[]>('/projects')
+      setProjects(Array.isArray(projects) ? projects : [])
     } catch (error) {
       console.error('Error fetching projects:', error)
     }
@@ -44,14 +44,15 @@ export default function ResourceSuggestions() {
 
     setLoading(true)
     try {
-      const response = await api.post('/suggestions/resources', {
+      const suggestions = await api.post<ResourceSuggestion[]>('/suggestions/resources', {
         projectId: selectedProject,
         ...formData,
         requiredHoursPerWeek: parseFloat(formData.requiredHoursPerWeek),
       })
-      setSuggestions(response.data)
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Error getting suggestions')
+      setSuggestions(Array.isArray(suggestions) ? suggestions : [])
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error getting suggestions'
+      alert(errorMessage)
     } finally {
       setLoading(false)
     }

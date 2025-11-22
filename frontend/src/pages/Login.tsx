@@ -18,8 +18,9 @@ export default function Login() {
     try {
       await login(email, password)
       navigate('/')
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed'
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

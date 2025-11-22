@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import api from '../lib/api'
+import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { format, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns'
 
@@ -39,8 +39,8 @@ export default function TimeTracking() {
 
   const fetchTasks = async () => {
     try {
-      const response = await api.get('/tasks')
-      setTasks(response.data)
+      const tasks = await api.get<unknown[]>('/tasks')
+      setTasks(Array.isArray(tasks) ? tasks : [])
     } catch (error) {
       console.error('Error fetching tasks:', error)
     }
@@ -51,14 +51,13 @@ export default function TimeTracking() {
       const weekStart = startOfWeek(selectedWeek, { weekStartsOn: 1 })
       const weekEnd = endOfWeek(selectedWeek, { weekStartsOn: 1 })
       
-      const response = await api.get('/time-entries', {
-        params: {
-          userId: user?.id,
-          startDate: weekStart.toISOString(),
-          endDate: weekEnd.toISOString(),
-        },
-      })
-      setTimeEntries(response.data)
+      const queryParams = new URLSearchParams()
+      if (user?.id) queryParams.append('userId', user.id)
+      queryParams.append('startDate', weekStart.toISOString())
+      queryParams.append('endDate', weekEnd.toISOString())
+      
+      const timeEntries = await api.get<TimeEntry[]>(`/time-entries?${queryParams.toString()}`)
+      setTimeEntries(Array.isArray(timeEntries) ? timeEntries : [])
     } catch (error) {
       console.error('Error fetching time entries:', error)
     } finally {
@@ -192,8 +191,9 @@ function CreateTimeEntryModal({
       })
       onSuccess()
       onClose()
-    } catch (error: any) {
-      alert(error.response?.data?.error || 'Error creating time entry')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error creating time entry'
+      alert(errorMessage)
     }
   }
 

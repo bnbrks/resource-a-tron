@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import api from '../lib/api'
+import { api } from '../lib/api'
 import { User, UserSkill, ProficiencyLevel } from '../types'
 
 export default function Users() {
@@ -13,8 +13,8 @@ export default function Users() {
 
   const fetchUsers = async () => {
     try {
-      const response = await api.get('/users')
-      setUsers(response.data)
+      const users = await api.get<User[]>('/users')
+      setUsers(Array.isArray(users) ? users : [])
     } catch (error) {
       console.error('Error fetching users:', error)
     } finally {

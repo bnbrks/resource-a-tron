@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import api from '../lib/api'
+import { api } from '../lib/api'
 import { Task, TaskType } from '../types'
 
 export default function Tasks() {
@@ -14,9 +14,8 @@ export default function Tasks() {
 
   const fetchTasks = async () => {
     try {
-      const params = filterType ? { type: filterType } : {}
-      const response = await api.get('/tasks', { params })
-      setTasks(response.data)
+      const tasks = await api.get<Task[]>('/tasks')
+      setTasks(Array.isArray(tasks) ? tasks : [])
     } catch (error) {
       console.error('Error fetching tasks:', error)
     } finally {
@@ -129,7 +128,9 @@ function CreateTaskModal({
   const [projects, setProjects] = useState<any[]>([])
 
   useEffect(() => {
-    api.get('/projects').then(response => setProjects(response.data))
+    api.get<unknown[]>('/projects')
+      .then((projects: unknown[]) => setProjects(Array.isArray(projects) ? projects : []))
+      .catch(() => setProjects([]))
   }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {

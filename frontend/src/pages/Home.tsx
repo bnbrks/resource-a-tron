@@ -1,27 +1,42 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import api from '../lib/api'
+import { api } from '../lib/api'
+
+interface HealthResponse {
+  status: string
+  service?: string
+  timestamp?: string
+}
+
+interface StatsResponse {
+  projects: number
+  tasks: number
+  users: number
+  activity?: {
+    activeProjects?: number
+  }
+}
 
 export default function Home() {
-  const [health, setHealth] = useState<any>(null)
-  const [stats, setStats] = useState<any>(null)
+  const [health, setHealth] = useState<HealthResponse | null>(null)
+  const [stats, setStats] = useState<StatsResponse | null>(null)
 
   useEffect(() => {
-    api.get('/health')
-      .then(response => setHealth(response.data))
-      .catch(error => console.error('Health check failed:', error))
+    api.get<HealthResponse>('/api/health')
+      .then((response: HealthResponse) => setHealth(response))
+      .catch((error: unknown) => console.error('Health check failed:', error))
     
     Promise.all([
-      api.get('/projects').catch(() => ({ data: [] })),
-      api.get('/tasks').catch(() => ({ data: [] })),
-      api.get('/users').catch(() => ({ data: [] })),
-      api.get('/analytics/activity').catch(() => ({ data: null })),
+      api.get<unknown[]>('/projects').catch(() => []),
+      api.get<unknown[]>('/tasks').catch(() => []),
+      api.get<unknown[]>('/users').catch(() => []),
+      api.get<unknown>('/analytics/activity').catch(() => null),
     ]).then(([projects, tasks, users, activity]) => {
       setStats({
-        projects: projects.data.length,
-        tasks: tasks.data.length,
-        users: users.data.length,
-        activity: activity.data,
+        projects: Array.isArray(projects) ? projects.length : 0,
+        tasks: Array.isArray(tasks) ? tasks.length : 0,
+        users: Array.isArray(users) ? users.length : 0,
+        activity: activity as StatsResponse['activity'],
       })
     })
   }, [])
