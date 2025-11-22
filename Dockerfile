@@ -28,10 +28,12 @@ COPY frontend/package*.json ./frontend/
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy frontend source files (including all TypeScript fixes and vite-env.d.ts)
+# Updated: 2025-11-22 - Force cache invalidation to pick up latest TypeScript fixes
 COPY frontend ./frontend
 
-# Verify vite-env.d.ts exists (forces cache invalidation if file was missing)
-RUN test -f /app/frontend/src/vite-env.d.ts || (echo "ERROR: vite-env.d.ts missing" && exit 1)
+# Verify vite-env.d.ts exists and verify all TypeScript fixes are present
+RUN test -f /app/frontend/src/vite-env.d.ts || (echo "ERROR: vite-env.d.ts missing" && exit 1) && \
+    grep -q "import { api }" /app/frontend/src/context/AuthContext.tsx || (echo "ERROR: TypeScript fixes not present" && exit 1)
 
 # Install frontend dependencies (this will create frontend/node_modules if needed)
 WORKDIR /app/frontend
