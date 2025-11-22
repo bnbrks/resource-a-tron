@@ -87,16 +87,22 @@ const CLIENTS = [
 async function generateUsers() {
   console.log('Generating users...');
   const users = [];
+  const passwordHash = await bcrypt.hash('password123', 10);
 
-  for (let i = 0; i < 50; i++) {
+  // Get or create team roles first
+  const teamRoles = await prisma.teamRole.findMany();
+  if (teamRoles.length === 0) {
+    console.log('No team roles found. Please run basic seed first (npm run seed)');
+    throw new Error('Team roles must exist before generating sample data');
+  }
+
+  for (let i = 0; i < 150; i++) {
     const firstName = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
     const lastName = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
     const name = `${firstName} ${lastName}`;
     const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@moodys.com`;
-    const passwordHash = await bcrypt.hash('password123', 10);
-    
-    const role: UserRole = i < 2 ? 'ADMIN' :
-                 i < 10 ? 'MANAGER' :
+    const role: UserRole = i < 3 ? 'ADMIN' :
+                 i < 25 ? 'MANAGER' :
                  'TEAM_MEMBER';
 
     const user = await prisma.user.create({
@@ -105,8 +111,30 @@ async function generateUsers() {
         name,
         passwordHash,
         role,
+        department: ['Risk Advisory', 'Actuarial', 'Compliance', 'IT', 'Operations'][Math.floor(Math.random() * 5)],
+        profile: {
+          create: {},
+        },
       },
     });
+
+    // Assign team roles to users (most users have 1-2 roles)
+    const numRoles = Math.random() > 0.7 ? 2 : 1; // 30% have 2 roles
+    const selectedRoles = [...teamRoles]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, numRoles);
+    
+    for (let roleIdx = 0; roleIdx < selectedRoles.length; roleIdx++) {
+      const role = selectedRoles[roleIdx];
+      await prisma.userTeamRole.create({
+        data: {
+          userId: user.id,
+          teamRoleId: role.id,
+          isCurrent: roleIdx === 0, // First role is current
+          startDate: new Date(Date.now() - Math.random() * 365 * 24 * 60 * 60 * 1000), // Random date in past year
+        },
+      });
+    }
 
     // Add skills
     const numSkills = Math.floor(Math.random() * 8) + 3; // 3-10 skills
@@ -154,8 +182,11 @@ async function generateProjects(users: any[]) {
   console.log('Generating projects...');
   const projects = [];
   const statuses: ProjectStatus[] = ['PLANNING', 'ACTIVE', 'ON_HOLD', 'COMPLETED', 'CANCELLED'];
+  const teamRoles = await prisma.teamRole.findMany();
 
-  for (let i = 0; i < 18; i++) {
+  // Generate more projects
+  const totalProjects = 50;
+  for (let i = 0; i < totalProjects; i++) {
     const name = PROJECT_NAMES[i] || `Project ${i + 1}`;
     const client = CLIENTS[Math.floor(Math.random() * CLIENTS.length)];
     const status: ProjectStatus = statuses[Math.floor(Math.random() * statuses.length)];
@@ -170,7 +201,7 @@ async function generateProjects(users: any[]) {
     const project = await prisma.activity.create({
       data: {
         name,
-        description: `Comprehensive ${name.toLowerCase()} initiative for ${client}`,
+        description: `Comprehensive ${name.toLowerCase()} initiative for ${client}. This project involves detailed analysis, risk assessment, and compliance review.`,
         type: 'PROJECT',
         status: status as any,
         startDate,
@@ -179,8 +210,23 @@ async function generateProjects(users: any[]) {
       },
     });
 
-    // Note: ActivityScope requires teamRoleId which we would need to create first
-    // Skipping scope creation for now to simplify the script
+    // Create activity scopes with team role requirements
+    const numRequiredRoles = Math.floor(Math.random() * 4) + 1; // 1-4 roles per project
+    const selectedRoles = [...teamRoles]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, numRequiredRoles);
+    
+    for (const role of selectedRoles) {
+      const requiredHours = Math.floor(Math.random() * 500) + 100; // 100-600 hours per role
+      await prisma.activityScope.create({
+        data: {
+          activityId: project.id,
+          teamRoleId: role.id,
+          requiredHours: parseFloat(requiredHours.toString()),
+          priority: ['HIGH', 'MEDIUM', 'LOW'][Math.floor(Math.random() * 3)] as any,
+        },
+      });
+    }
 
     projects.push(project);
   }
@@ -196,15 +242,34 @@ async function generateTasks(projects: any[]) {
 
   // Project tasks
   for (const project of projects) {
-    const numTasks = Math.floor(Math.random() * 5) + 2; // 2-6 tasks per project
+    const numTasks = Math.floor(Math.random() * 8) + 4; // 4-11 tasks per project
+    const taskNames = [
+      'Requirements Analysis',
+      'Design & Planning',
+      'Data Collection',
+      'Analysis & Modeling',
+      'Testing & Validation',
+      'Documentation',
+      'Review & Approval',
+      'Implementation',
+      'Quality Assurance',
+      'Client Presentation',
+      'Follow-up & Support',
+    ];
     for (let i = 0; i < numTasks; i++) {
+      const taskName = taskNames[i] || `Task ${i + 1} for ${project.name}`;
+      const taskStartDate = new Date(project.startDate);
+      taskStartDate.setDate(taskStartDate.getDate() + (i * 7)); // Stagger tasks weekly
+      const taskEndDate = new Date(taskStartDate);
+      taskEndDate.setDate(taskEndDate.getDate() + Math.floor(Math.random() * 14) + 7); // 1-3 weeks duration
+      
       const task = await prisma.activity.create({
         data: {
-          name: `Task ${i + 1} for ${project.name}`,
-          description: `Detailed work item for ${project.name}`,
+          name: `${taskName} - ${project.name}`,
+          description: `Detailed work item: ${taskName} for ${project.name}`,
           type: 'PROJECT',
-          startDate: project.startDate,
-          endDate: project.endDate,
+          startDate: taskStartDate,
+          endDate: taskEndDate < project.endDate ? taskEndDate : project.endDate,
         },
       });
       tasks.push(task);
@@ -212,7 +277,7 @@ async function generateTasks(projects: any[]) {
   }
 
   // Training tasks
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 25; i++) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() + Math.floor(Math.random() * 60));
     const endDate = new Date(startDate);
@@ -231,7 +296,7 @@ async function generateTasks(projects: any[]) {
   }
 
   // PTO tasks
-  for (let i = 0; i < 15; i++) {
+  for (let i = 0; i < 40; i++) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() + Math.floor(Math.random() * 90));
     const endDate = new Date(startDate);
@@ -250,7 +315,7 @@ async function generateTasks(projects: any[]) {
   }
 
   // Other tasks
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 15; i++) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - Math.floor(Math.random() * 30));
     const endDate = new Date(startDate);
@@ -280,7 +345,7 @@ async function generateAllocations(users: any[], tasks: any[]) {
   const projectTasks = tasks.filter((t: { type: string }) => t.type === 'PROJECT');
   
   for (const task of projectTasks) {
-    const numAllocations = Math.floor(Math.random() * 3) + 1; // 1-3 users per task
+    const numAllocations = Math.floor(Math.random() * 5) + 2; // 2-6 users per task
     const selectedUsers = [...users]
       .sort(() => Math.random() - 0.5)
       .slice(0, numAllocations);
@@ -306,7 +371,7 @@ async function generateAllocations(users: any[], tasks: any[]) {
   // Allocate users to training
   const trainingTasks = tasks.filter((t: { type: string }) => t.type === 'INTERNAL');
   for (const task of trainingTasks) {
-    const numAllocations = Math.floor(Math.random() * 5) + 3; // 3-7 users per training
+    const numAllocations = Math.floor(Math.random() * 10) + 5; // 5-14 users per training
     const selectedUsers = [...users]
       .sort(() => Math.random() - 0.5)
       .slice(0, numAllocations);
@@ -332,23 +397,24 @@ async function generateTimeEntries(users: any[], tasks: any[]) {
   console.log('Generating time entries...');
   let entryCount = 0;
 
-  // Generate entries for last 6 months
+  // Generate entries for last 12 months (more comprehensive)
   const startDate = new Date();
-  startDate.setMonth(startDate.getMonth() - 6);
+  startDate.setMonth(startDate.getMonth() - 12);
 
   const projectTasks = tasks.filter((t: { type: TaskType }) => t.type === 'PROJECT');
+  const daysToGenerate = 365; // Full year
   
-  for (let day = 0; day < 180; day++) {
+  for (let day = 0; day < daysToGenerate; day++) {
     const currentDate = new Date(startDate);
     currentDate.setDate(currentDate.getDate() + day);
 
     // Skip weekends
     if (currentDate.getDay() === 0 || currentDate.getDay() === 6) continue;
 
-    // Generate entries for some users each day
+    // Generate entries for some users each day (more users logging time)
     const usersToLog = [...users]
       .sort(() => Math.random() - 0.5)
-      .slice(0, Math.floor(Math.random() * 20) + 10); // 10-30 users per day
+      .slice(0, Math.floor(Math.random() * 50) + 30); // 30-80 users per day
 
     for (const user of usersToLog) {
       // Find user's allocations for this date
@@ -376,23 +442,33 @@ async function generateTimeEntries(users: any[], tasks: any[]) {
 
       // Log time for some allocations
       for (const allocation of userAllocations) {
-        if (Math.random() > 0.3) { // 70% chance to log time
+        if (Math.random() > 0.25) { // 75% chance to log time
           const hours = parseFloat(allocation.allocatedHours.toString()) / 5 + (Math.random() - 0.5) * 2; // Some variance
           const clampedHours = Math.max(0.25, Math.min(8, hours));
+          
+          // Sometimes log multiple entries per day (splitting work across activities)
+          const numEntries = Math.random() > 0.8 ? 2 : 1; // 20% chance of 2 entries
+          
+          for (let e = 0; e < numEntries; e++) {
+            const entryHours = e === 0 ? clampedHours : Math.min(clampedHours * 0.3, 2);
+            const statuses = ['DRAFT', 'SUBMITTED', 'APPROVED'];
+            const status = statuses[Math.floor(Math.random() * statuses.length)] as any;
 
-          try {
-            await prisma.timeEntry.create({
-              data: {
-                userId: user.id,
-                activityId: allocation.activityId,
-                date: currentDate,
-                hours: parseFloat((Math.round(clampedHours * 4) / 4).toString()), // Round to 0.25
-                description: `Work on ${allocation.activity.name}`,
-              },
-            });
-            entryCount++;
-          } catch (error) {
-            // Skip if entry already exists
+            try {
+              await prisma.timeEntry.create({
+                data: {
+                  userId: user.id,
+                  activityId: allocation.activityId,
+                  date: currentDate,
+                  hours: parseFloat((Math.round(entryHours * 4) / 4).toString()), // Round to 0.25
+                  description: `Work on ${allocation.activity.name}`,
+                  status,
+                },
+              });
+              entryCount++;
+            } catch (error) {
+              // Skip if entry already exists or other error
+            }
           }
         }
       }
@@ -420,14 +496,29 @@ async function main() {
     await generateAllocations(users, tasks);
     await generateTimeEntries(users, tasks);
 
+    // Count allocations and time entries
+    const allocationCount = await prisma.assignment.count();
+    const timeEntryCount = await prisma.timeEntry.count();
+    const scopeCount = await prisma.activityScope.count();
+
+    console.log('\n========================================');
     console.log('Sample data generation completed!');
+    console.log('========================================');
     console.log(`\nSummary:`);
     console.log(`- Users: ${users.length}`);
     console.log(`- Projects: ${projects.length}`);
     console.log(`- Tasks: ${tasks.length}`);
-    console.log(`\nDefault login credentials:`);
-    console.log(`Email: ${users[0].email}`);
+    console.log(`- Allocations (Assignments): ${allocationCount}`);
+    console.log(`- Time Entries: ${timeEntryCount}`);
+    console.log(`- Activity Scopes: ${scopeCount}`);
+    console.log(`\nDefault login credentials (all users):`);
+    console.log(`Email: ${users[0].email} (or any generated user email)`);
     console.log(`Password: password123`);
+    console.log(`\nAdmin users:`);
+    users.filter((u: { role: string }) => u.role === 'ADMIN').forEach((u: { email: string }) => {
+      console.log(`  - ${u.email}`);
+    });
+    console.log('\n========================================');
   } catch (error) {
     console.error('Error generating sample data:', error);
     throw error;
