@@ -25,8 +25,11 @@ COPY frontend/package*.json ./frontend/
 # Copy root node_modules from deps (workspace hoisting)
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy frontend source files
+# Copy frontend source files (including all TypeScript fixes and vite-env.d.ts)
 COPY frontend ./frontend
+
+# Verify vite-env.d.ts exists (forces cache invalidation if file was missing)
+RUN test -f /app/frontend/src/vite-env.d.ts || (echo "ERROR: vite-env.d.ts missing" && exit 1)
 
 # Install frontend dependencies (this will create frontend/node_modules if needed)
 WORKDIR /app/frontend
