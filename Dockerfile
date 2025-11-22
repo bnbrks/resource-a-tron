@@ -10,8 +10,8 @@ COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 COPY backend/package*.json ./backend/
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (using npm install since we don't have lock files yet)
+RUN npm install
 
 # Build frontend
 FROM base AS frontend-builder
