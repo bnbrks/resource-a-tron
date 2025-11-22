@@ -1,4 +1,4 @@
-import prisma from '../prisma';
+import prisma from '../prisma.js';
 
 export interface CapacityInfo {
   userId: string;
@@ -63,7 +63,7 @@ export async function getUserCapacity(
   }
 
   // Calculate allocated hours per week
-  allocations.forEach((allocation) => {
+  allocations.forEach((allocation: { startDate: Date | null; endDate: Date | null; allocatedHours: any }) => {
     if (!allocation.startDate) return;
     const allocStart = new Date(allocation.startDate);
     const allocEnd = allocation.endDate ? new Date(allocation.endDate) : endDate;

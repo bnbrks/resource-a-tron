@@ -1,4 +1,4 @@
-import { prisma } from '../lib/prisma'
+import { prisma } from '../lib/prisma.js'
 import { Decimal } from '@prisma/client/runtime/library'
 
 interface RecommendationCriteria {
@@ -119,10 +119,10 @@ export async function recommendResources(criteria: RecommendationCriteria): Prom
     }
 
     // Calculate skills match score
-    const userSkillNames = user.skills.map((us) => us.skill.name.toLowerCase())
-    const requiredSkillNames = requiredSkills.map((s) => s.toLowerCase())
-    const matchedSkills = requiredSkillNames.filter((rs) =>
-      userSkillNames.some((us) => us.includes(rs) || rs.includes(us))
+    const userSkillNames = user.skills.map((us: { skill: { name: string } }) => us.skill.name.toLowerCase())
+    const requiredSkillNames = requiredSkills.map((s: string) => s.toLowerCase())
+    const matchedSkills = requiredSkillNames.filter((rs: string) =>
+      userSkillNames.some((us: string) => us.includes(rs) || rs.includes(us))
     )
     const skillsMatch = requiredSkills.length > 0
       ? matchedSkills.length / requiredSkills.length

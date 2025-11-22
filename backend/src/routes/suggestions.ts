@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
-import prisma from '../prisma';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { suggestResources, estimateStartDate } from '../services/resourceSuggestionService';
+import prisma from '../prisma.js';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { suggestResources, estimateStartDate } from '../services/resourceSuggestionService.js';
 
 const router = Router();
 

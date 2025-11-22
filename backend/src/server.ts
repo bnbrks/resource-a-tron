@@ -25,14 +25,14 @@ app.get('/health', (req, res) => {
 });
 
 // API routes
-import authRoutes from './routes/auth';
-import userRoutes from './routes/users';
-import projectRoutes from './routes/projects';
-import taskRoutes from './routes/tasks';
-import timeEntryRoutes from './routes/timeEntries';
-import allocationRoutes from './routes/allocations';
-import analyticsRoutes from './routes/analytics';
-import suggestionRoutes from './routes/suggestions';
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import projectRoutes from './routes/projects.js';
+import taskRoutes from './routes/tasks.js';
+import timeEntryRoutes from './routes/timeEntries.js';
+import allocationRoutes from './routes/allocations.js';
+import analyticsRoutes from './routes/analytics.js';
+import suggestionRoutes from './routes/suggestions.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);

@@ -1,7 +1,7 @@
 import { Router, Response } from 'express';
-import prisma from '../prisma';
-import { authenticate, AuthRequest } from '../middleware/auth';
-import { calculateUserUtilization, calculateTeamUtilization, getActivitySummary } from '../services/utilizationService';
+import prisma from '../prisma.js';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
+import { calculateUserUtilization, calculateTeamUtilization, getActivitySummary } from '../services/utilizationService.js';
 
 const router = Router();
 

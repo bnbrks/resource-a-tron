@@ -1,4 +1,4 @@
-import prisma from '../prisma';
+import prisma from '../prisma.js';
 
 export interface UtilizationData {
   userId: string;
@@ -54,7 +54,7 @@ export async function calculateUserUtilization(
 
   // Calculate allocated hours (sum of weekly allocations)
   let allocatedHours = 0;
-  allocations.forEach((allocation) => {
+  allocations.forEach((allocation: { startDate: Date | null; endDate: Date | null; allocatedHours: any }) => {
     if (!allocation.startDate) return;
     const allocStart = new Date(Math.max(new Date(allocation.startDate).getTime(), startDate.getTime()));
     const allocEnd = allocation.endDate

@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
-import prisma from '../prisma';
-import { authenticate, AuthRequest } from '../middleware/auth';
+import prisma from '../prisma.js';
+import { authenticate, AuthRequest } from '../middleware/auth.js';
 
 const router = Router();
 
@@ -320,8 +320,8 @@ router.get('/summary', authenticate, async (req: AuthRequest, res: Response) => 
       },
     });
 
-    const result = summary.map((s) => {
-      const activity = activities.find((a) => a.id === s.activityId);
+    const result = summary.map((s: { activityId: string; _sum: { hours: any }; _count: { id: number } }) => {
+      const activity = activities.find((a: { id: string; name: string; type: string }) => a.id === s.activityId);
       const hoursValue = s._sum.hours;
       const hours = hoursValue ? (typeof hoursValue === 'number' ? hoursValue : parseFloat(hoursValue.toString())) : 0;
       return {

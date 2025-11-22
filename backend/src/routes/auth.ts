@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express'
 import { z } from 'zod'
-import { prisma } from '../lib/prisma'
-import { hashPassword, comparePassword, generateToken } from '../utils/auth'
+import { prisma } from '../lib/prisma.js'
+import { hashPassword, comparePassword, generateToken } from '../utils/auth.js'
 
 const router = Router()
 

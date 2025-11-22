@@ -1,5 +1,5 @@
-import prisma from '../prisma';
-import { checkAllocationConflict } from './allocationService';
+import prisma from '../prisma.js';
+import { checkAllocationConflict } from './allocationService.js';
 
 export interface ResourceSuggestion {
   userId: string;

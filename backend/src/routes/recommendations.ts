@@ -1,7 +1,7 @@
 import { Router, Response } from 'express'
 import { z } from 'zod'
-import { authenticate, authorize, AuthRequest } from '../middleware/auth'
-import { recommendResources } from '../services/recommendation'
+import { authenticate, authorize, AuthRequest } from '../middleware/auth.js'
+import { recommendResources } from '../services/recommendation.js'
 
 const router = Router()
 
