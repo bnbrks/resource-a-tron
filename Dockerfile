@@ -91,8 +91,9 @@ ENV NODE_ENV=production
 # Copy built applications
 # Frontend dist is optional (create directory first)
 RUN mkdir -p ./frontend/dist
-# Copy frontend dist (use wildcard to handle missing dir gracefully - will create empty dir if source doesn't exist)
-COPY --from=frontend-builder /app/frontend/dist* ./frontend/ || echo "Frontend dist not found, continuing..."
+# Copy frontend dist if it exists (optional - backend can run without frontend)
+# Note: This will fail if frontend-builder stage wasn't run, but that's ok for backend-only deploys
+COPY --from=frontend-builder /app/frontend/dist ./frontend/dist || echo "Frontend not built, skipping..."
 COPY --from=backend-builder /app/backend/dist ./backend/dist
 COPY --from=backend-builder /app/backend/package.json ./backend/
 COPY --from=backend-builder /app/backend/prisma ./backend/prisma
