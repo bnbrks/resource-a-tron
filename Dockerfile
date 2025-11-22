@@ -5,16 +5,13 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 
-# Copy package files
+# Copy all package files
 COPY package*.json ./
 COPY frontend/package*.json ./frontend/
 COPY backend/package*.json ./backend/
 
-# Install dependencies (using npm install since we don't have lock files yet)
-# Install root dependencies first, then workspace dependencies
-RUN npm install --workspaces=false
-RUN cd frontend && npm install
-RUN cd backend && npm install
+# Install all dependencies (npm install handles workspaces automatically)
+RUN npm install
 
 # Build frontend
 FROM base AS frontend-builder
