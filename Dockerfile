@@ -18,14 +18,17 @@ RUN npm install --legacy-peer-deps --prefer-offline --no-audit
 FROM base AS frontend-builder
 WORKDIR /app
 
-# Copy root node_modules (workspace hoisting)
+# Copy root package.json and workspace structure
+COPY package*.json ./
+COPY frontend/package*.json ./frontend/
+
+# Copy root node_modules from deps (workspace hoisting)
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy frontend files
+# Copy frontend source files
 COPY frontend ./frontend
-COPY package*.json ./
 
-# Install frontend dependencies if needed (workspace might not hoist all)
+# Install frontend dependencies (this will create frontend/node_modules if needed)
 WORKDIR /app/frontend
 RUN npm install --legacy-peer-deps --prefer-offline --no-audit || true
 
@@ -36,14 +39,17 @@ RUN npm run build
 FROM base AS backend-builder
 WORKDIR /app
 
-# Copy root node_modules (workspace hoisting)
+# Copy root package.json and workspace structure
+COPY package*.json ./
+COPY backend/package*.json ./backend/
+
+# Copy root node_modules from deps (workspace hoisting)
 COPY --from=deps /app/node_modules ./node_modules
 
-# Copy backend files
+# Copy backend source files
 COPY backend ./backend
-COPY package*.json ./
 
-# Install backend dependencies if needed (workspace might not hoist all)
+# Install backend dependencies (this will create backend/node_modules if needed)
 WORKDIR /app/backend
 RUN npm install --legacy-peer-deps --prefer-offline --no-audit || true
 
@@ -64,9 +70,11 @@ ENV NODE_ENV=production
 # Copy built applications
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 COPY --from=backend-builder /app/backend/dist ./backend/dist
-COPY --from=backend-builder /app/backend/node_modules ./backend/node_modules
 COPY --from=backend-builder /app/backend/package.json ./backend/
 COPY --from=backend-builder /app/backend/prisma ./backend/prisma
+
+# Copy node_modules from deps (workspace hoisting puts everything at root)
+COPY --from=deps /app/node_modules ./node_modules
 
 # Prisma is already in node_modules, no need to install globally
 # Use npx prisma for migrations if needed
