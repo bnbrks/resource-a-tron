@@ -50,7 +50,9 @@ RUN npm install --legacy-peer-deps --prefer-offline --no-audit || true
 # Generate Prisma Client (already in node_modules, no global install needed)
 RUN npx prisma generate
 
-# Build TypeScript
+# Build TypeScript with increased memory limit
+# Exit code 137 = out of memory, so we increase Node.js memory limit
+ENV NODE_OPTIONS="--max-old-space-size=2048"
 RUN npm run build
 
 # Production image
