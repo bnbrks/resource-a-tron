@@ -106,7 +106,7 @@ function UserDetailModal({
   onClose: () => void
   onUpdate: () => void
 }) {
-  const [skills, setSkills] = useState<UserSkill[]>(user.skills || [])
+  const [skills] = useState<UserSkill[]>(user.skills || [])
   const [newSkill, setNewSkill] = useState({ skillName: '', proficiencyLevel: ProficiencyLevel.INTERMEDIATE, certified: false })
 
   const handleAddSkill = async () => {
