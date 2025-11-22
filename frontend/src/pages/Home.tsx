@@ -95,7 +95,9 @@ export default function Home() {
               </div>
               <div className="text-sm text-gray-600 mt-4">
                 <p>Service: {health.service}</p>
-                <p>Last checked: {new Date(health.timestamp).toLocaleString()}</p>
+                {health.timestamp && (
+                  <p>Last checked: {new Date(health.timestamp).toLocaleString()}</p>
+                )}
               </div>
             </div>
           ) : (
