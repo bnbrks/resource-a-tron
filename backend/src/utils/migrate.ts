@@ -10,12 +10,16 @@ const __dirname = path.dirname(__filename)
 export async function runMigrations() {
   try {
     console.log('Running database migrations...')
-    const prismaPath = path.join(__dirname, '../../prisma')
-    const { stdout, stderr } = await execAsync('npx prisma migrate deploy', {
-      cwd: path.join(__dirname, '../..'),
+    const backendPath = path.join(__dirname, '../..')
+    // Use npx to run prisma from node_modules
+    const { stdout, stderr } = await execAsync('npx --yes prisma migrate deploy', {
+      cwd: backendPath,
+      env: { ...process.env },
     })
     console.log(stdout)
-    if (stderr) console.error(stderr)
+    if (stderr && !stderr.includes('warning')) {
+      console.error(stderr)
+    }
     console.log('Migrations completed successfully')
   } catch (error) {
     console.error('Migration failed:', error)

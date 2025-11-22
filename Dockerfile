@@ -44,15 +44,15 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Install Prisma CLI for migrations
-RUN npm install -g prisma
-
 # Copy built applications
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 COPY --from=backend-builder /app/backend/dist ./backend/dist
 COPY --from=backend-builder /app/backend/node_modules ./backend/node_modules
 COPY --from=backend-builder /app/backend/package.json ./backend/
 COPY --from=backend-builder /app/backend/prisma ./backend/prisma
+
+# Prisma is already in node_modules, no need to install globally
+# Use npx prisma for migrations if needed
 
 # Expose port
 EXPOSE 3000
