@@ -92,8 +92,11 @@ ENV NODE_ENV=production
 # Frontend dist is optional (create directory first)
 RUN mkdir -p ./frontend/dist
 # Copy frontend dist if it exists (optional - backend can run without frontend)
-# Note: This will fail if frontend-builder stage wasn't run, but that's ok for backend-only deploys
-COPY --from=frontend-builder /app/frontend/dist ./frontend/dist || echo "Frontend not built, skipping..."
+# Note: We'll handle missing dist gracefully with a shell command
+RUN --mount=from=frontend-builder,source=/app/frontend/dist,target=/tmp-frontend-dist,rw \
+    if [ -d "/tmp-frontend-dist" ] && [ -n "$(ls -A /tmp-frontend-dist 2>/dev/null)" ]; then \
+      cp -r /tmp-frontend-dist/* ./frontend/dist/ 2>/dev/null || true; \
+    fi || true
 COPY --from=backend-builder /app/backend/dist ./backend/dist
 COPY --from=backend-builder /app/backend/package.json ./backend/
 COPY --from=backend-builder /app/backend/prisma ./backend/prisma
