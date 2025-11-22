@@ -11,12 +11,16 @@ COPY frontend/package*.json ./frontend/
 COPY backend/package*.json ./backend/
 
 # Install dependencies (using npm install since we don't have lock files yet)
-RUN npm install
+# Install root dependencies first, then workspace dependencies
+RUN npm install --workspaces=false
+RUN cd frontend && npm install
+RUN cd backend && npm install
 
 # Build frontend
 FROM base AS frontend-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/frontend/node_modules ./frontend/node_modules
 COPY frontend ./frontend
 COPY package*.json ./
 WORKDIR /app/frontend
@@ -26,6 +30,7 @@ RUN npm run build
 FROM base AS backend-builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/backend/node_modules ./backend/node_modules
 COPY backend ./backend
 COPY package*.json ./
 WORKDIR /app/backend
