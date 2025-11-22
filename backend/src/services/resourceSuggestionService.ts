@@ -112,7 +112,11 @@ async function evaluateUserForProject(
     const userSkillLevel = userSkills.get(req.skillName);
     
     if (userSkillLevel) {
-      const requiredLevelStr = typeof req.requiredLevel === 'string' ? req.requiredLevel : String(req.requiredLevel);
+      // Handle Prisma enum types - convert to string
+      const requiredLevelValue = req.requiredLevel as unknown;
+      const requiredLevelStr = typeof requiredLevelValue === 'string' 
+        ? requiredLevelValue 
+        : String(requiredLevelValue);
       const levelMatch = compareSkillLevels(userSkillLevel, requiredLevelStr);
       if (levelMatch >= 0) {
         matchedRequirements += req.priority || 1;

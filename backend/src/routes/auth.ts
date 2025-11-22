@@ -49,8 +49,9 @@ router.post('/register', async (req: Request, res: Response) => {
       throw new Error('JWT_SECRET not configured');
     }
 
+    const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
     const signOptions: SignOptions = {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      expiresIn: expiresIn as string,
     };
     const token = jwt.sign(
       { userId: user.id, role: user.role },
@@ -99,8 +100,9 @@ router.post('/login', async (req: Request, res: Response) => {
       throw new Error('JWT_SECRET not configured');
     }
 
+    const expiresIn = process.env.JWT_EXPIRES_IN || '7d';
     const signOptions: SignOptions = {
-      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+      expiresIn: expiresIn as string,
     };
     const token = jwt.sign(
       { userId: user.id, role: user.role },
