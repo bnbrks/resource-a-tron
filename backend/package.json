@@ -14,7 +14,8 @@
     "migrate": "prisma migrate dev",
     "generate": "prisma generate",
     "studio": "prisma studio",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "seed:sample": "tsx src/scripts/generateSampleData.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
